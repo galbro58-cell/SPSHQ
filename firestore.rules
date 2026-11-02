@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null; }
+    // The executive is the one shared account the app signs into when someone enters the executive code.
+    function isExec() { return signedIn() && request.auth.token.email == 'admin@unisqsps.com'; }
+    // Facilitators (faculty) sign in with the facilitator code: they read cases and write reviews only.
+    function isFac() { return signedIn() && request.auth.token.email == 'facilitator@unisqsps.com'; }
+    match /events/{id}      { allow read: if true; allow write: if isExec(); }
+    match /console/{id}     { allow read: if true; allow write: if isExec(); }
+    match /mdtstatus/{id}   { allow read: if true; allow write: if signedIn(); }
+    match /positions/{id}   { allow read: if true; allow write: if signedIn(); }
+    // Photos on public event pages: anyone can view, only the executive can add or remove.
+    match /eventmedia/{id}  { allow read: if true; allow write: if isExec(); }
+    // Patient and bystander briefing: a public page reached by a hidden route; only the executive writes it.
+    match /briefing/{id}    { allow read: if true; allow write: if isExec(); }
+    // Casting sign-ups from the briefing page, filed under the person's registration id. They can be read and written by the
+    // executive, by the browser that made the registration, or by any browser that has confirmed it with the registration email.
+    match /castpicks/{rid}  { allow read, write: if isExec() || (signedIn() && (request.auth.uid == rid || exists(/databases/$(db)/documents/castlinks/$(rid + '_' + request.auth.uid)))); }
+    // A browser confirming who it belongs to: only allowed when the email matches the one on that registration.
+    match /castlinks/{id} {
+      allow create, update: if signedIn() && request.resource.data.uid == request.auth.uid && id == request.resource.data.rid + '_' + request.auth.uid
+        && request.resource.data.email is string && exists(/databases/$(db)/documents/registrations/$(request.resource.data.rid))
+        && request.resource.data.email == get(/databases/$(db)/documents/registrations/$(request.resource.data.rid)).data.email.trim().lower();
+      allow read, delete: if isExec() || (signedIn() && resource.data.uid == request.auth.uid);
+    }
+    // Friend groups: anyone signed in can look a code up and add themselves.
+    match /castgroups/{code} { allow read: if true; allow write: if signedIn(); }
+    // Sim night roster for the briefing page: name and kind only (1st year, external, facilitator). People add themselves when they register; the executive keeps it in step.
+    match /castroster/{uid} { allow read: if true; allow write: if isExec() || (signedIn() && request.auth.uid == uid); }
+    match /rsvps/{uid}      { allow read: if true; allow write: if signedIn() && request.auth.uid == uid; }
+    // Registrations hold personal details: each member reads and writes only their own; the executive reads them all.
+    match /registrations/{uid} { allow read: if isExec() || (signedIn() && request.auth.uid == uid); allow write: if isExec() || (signedIn() && request.auth.uid == uid); }
+    match /committee/main/reviews/{id} { allow read: if isExec() || isFac(); allow write: if isExec() || isFac(); }
+    match /committee/main/cases/{id} { allow read: if isExec() || isFac(); allow write: if isExec(); }
+    match /committee/main/sets/{id} { allow read: if isExec() || isFac(); allow write: if isExec(); }
+    match /committee/main/checkins/{id} { allow read, write: if isExec(); }
+    match /committee/main/runs/{id} { allow read, write: if isExec() || isFac(); }
+    match /committee/main/settings/{id} { allow read: if isExec() || isFac(); allow write: if isExec(); }
+    match /committee/main/ecgs/{id} { allow read, write: if isExec() || isFac(); }
+    match /committee/main/files/{id} { allow read: if isExec() || isFac(); allow write: if isExec(); }
+    // SPS Store. Products, settings and product photos are public; only the executive changes them.
+    match /shop/{id}    { allow read: if true; allow write: if isExec(); }
+    match /shopimg/{id} { allow read: if true; allow write: if isExec(); }
+    // Store orders. Anyone (visitors sign in anonymously) can place an order for themselves. Buyers read only their own
+    // orders and can only say they've paid or ask to cancel. The executive reads and manages every order.
+    match /shoporders/{id} {
+      allow create: if isExec() || (signedIn() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'new' && request.resource.data.buyerPaid == false
+        && request.resource.data.keys().hasOnly(['ref','uid','at','name','email','phone','sid','note','method','items','total','status','buyerPaid','buyerPaidAt','cancelReq'])
+        && request.resource.data.items is list && request.resource.data.items.size() > 0 && request.resource.data.items.size() <= 30
+        && request.resource.data.total is int && request.resource.data.total > 0);
+      allow read: if isExec() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow update: if isExec() || (signedIn() && resource.data.uid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['buyerPaid','buyerPaidAt','cancelReq']));
+      allow delete: if isExec();
+    }
+    // ECG revision deck: everyone can read it; the executive and facilitators publish to it from ECG Studio.
+    match /ecglearn/{id} { allow read: if true; allow write: if isExec() || isFac(); }
+    match /committee/{document=**} { allow read, write: if isExec(); }
+  }
+}

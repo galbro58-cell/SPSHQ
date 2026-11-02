@@ -1,0 +1,23 @@
+SPS HQ
+Copyright (c) 2026 Ethan Gallagher. All rights reserved.
+
+This software, including its source code, design, screens, graphics, text, data
+structures and documentation (together, "the Software"), is owned by Ethan Gallagher
+and is protected by copyright.
+
+Licence to the UniSQ Student Paramedic Society
+The UniSQ Student Paramedic Society ("SPS") may host and use the Software for its own
+society activities, on the terms agreed in writing with the owner. This licence is
+non-exclusive and cannot be transferred. It does not give SPS, its members or anyone
+else any ownership of, or rights in, the Software.
+
+Everyone else
+Unless the owner has given written permission, no one may copy, modify, adapt,
+translate, publish, distribute, sell, sublicense, host, reverse engineer or create
+derivative works from the Software, in whole or in part. This includes reusing its
+code, screen designs, layouts, wording or features in another product.
+
+Content added by SPS (such as event details, case content and member registrations)
+remains SPS's content. Personal information is handled under SPS's privacy obligations.
+
+To ask for permission, contact the owner, Ethan Gallagher.
